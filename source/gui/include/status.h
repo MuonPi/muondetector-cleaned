@@ -28,7 +28,7 @@ signals:
 	void preamp1SwitchChanged(bool state);
 	void preamp2SwitchChanged(bool state);
     void resetRateClicked();
-    void triggerSelectionChanged(GPIO_PIN signal);
+    void triggerSelectionChanged(GPIO_SIGNAL signal);
 
 public slots:
     void onGpioRatesReceived(quint8 whichrate, QVector<QPointF> rates);
@@ -44,7 +44,7 @@ public slots:
     void onTemperatureReceived(float value);
    	void clearPulseHeightHisto();
     void clearRatePlot();
-    void onTriggerSelectionReceived(GPIO_PIN signal);
+    void onTriggerSelectionReceived(GPIO_SIGNAL signal);
     void onTimepulseReceived();
     void onMqttStatusChanged(bool connected);
 

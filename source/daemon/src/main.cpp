@@ -20,6 +20,7 @@
 #include "custom_io_operators.h"
 #include "daemon.h"
 #include "gpio_pin_definitions.h"
+#include <muondetector_structs.h>
 #include "config.h"
 
 //static const char* CONFIG_FILE = "/etc/muondetector/muondetector.conf";
@@ -115,6 +116,8 @@ void messageOutput(QtMsgType type, const QMessageLogContext &context, const QStr
 int main(int argc, char *argv[])
 {
     qRegisterMetaType<TcpMessage>("TcpMessage");
+	qRegisterMetaType<EventTime>("EventTime");
+	
     qInstallMessageHandler(messageOutput);
     QCoreApplication a(argc, argv);
     QCoreApplication::setApplicationName("muondetector-daemon");
@@ -543,7 +546,7 @@ int main(int argc, char *argv[])
     {
         //if (verbose>2)
 //		qWarning() << "No 'trigger_input' setting in configuration file. Assuming gpio" << (int)eventSignal << endl;
-        qWarning() << "No 'trigger_input' setting in configuration file. Assuming signal" << GPIO_SIGNAL_MAP[(GPIO_PIN)eventSignal].name;
+        qWarning() << "No 'trigger_input' setting in configuration file. Assuming signal" << GPIO_SIGNAL_MAP[(GPIO_SIGNAL)eventSignal].name;
     }
 
 

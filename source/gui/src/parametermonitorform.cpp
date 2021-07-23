@@ -50,7 +50,7 @@ void ParameterMonitorForm::on_timingSelectionComboBox_currentIndexChanged(int in
 void ParameterMonitorForm::on_adcTriggerSelectionComboBox_currentIndexChanged(int index)
 {
     for (auto signalIt=GPIO_SIGNAL_MAP.begin(); signalIt!=GPIO_SIGNAL_MAP.end(); ++signalIt) {
-        const GPIO_PIN signalId=signalIt.key();
+        const GPIO_SIGNAL signalId=signalIt.key();
         if (GPIO_SIGNAL_MAP[signalId].name==ui->adcTriggerSelectionComboBox->itemText(index)) {
             emit triggerSelectionChanged(signalId);
             return;
@@ -189,9 +189,8 @@ void ParameterMonitorForm::onPreampSwitchReceived(uint8_t channel, bool state)
     else if (channel==1) ui->preamp2EnCheckBox->setChecked(state);
 }
 
-void ParameterMonitorForm::onTriggerSelectionReceived(GPIO_PIN signal)
+void ParameterMonitorForm::onTriggerSelectionReceived(GPIO_SIGNAL signal)
 {
-    //if (GPIO_PIN_NAMES.find(signal)==GPIO_PIN_NAMES.end()) return;
     int i=0;
     while (i<ui->adcTriggerSelectionComboBox->count()) {
         if (ui->adcTriggerSelectionComboBox->itemText(i).compare(GPIO_SIGNAL_MAP[signal].name)==0) break;

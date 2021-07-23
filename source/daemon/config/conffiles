@@ -1,2 +1,1 @@
 /etc/muondetector/muondetector.conf
-/etc/systemd/system/pigpiod.service.d/pigpiod.conf

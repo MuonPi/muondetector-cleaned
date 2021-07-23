@@ -165,7 +165,7 @@ void Status::clearRatePlot()
     statusUi->ratePlot->plotAndSamples(andSamples);
 }
 
-void Status::onTriggerSelectionReceived(GPIO_PIN signal)
+void Status::onTriggerSelectionReceived(GPIO_SIGNAL signal)
 {
     int i=0;
     while (i<statusUi->triggerSelectionComboBox->count()) {
@@ -299,7 +299,7 @@ Status::~Status()
 void Status::on_triggerSelectionComboBox_currentIndexChanged(const QString &arg1)
 {
 	for (auto signalIt=GPIO_SIGNAL_MAP.begin(); signalIt!=GPIO_SIGNAL_MAP.end(); ++signalIt) {
-		const GPIO_PIN signalId=signalIt.key();
+		const GPIO_SIGNAL signalId=signalIt.key();
 		if (GPIO_SIGNAL_MAP[signalId].name==arg1) {
 			emit triggerSelectionChanged(signalId);
 			return;

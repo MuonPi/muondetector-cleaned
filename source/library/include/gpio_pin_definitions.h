@@ -1,5 +1,5 @@
-#ifndef GPIO_PIN_DEFINITIONS_H
-#define GPIO_PIN_DEFINITIONS_H
+#ifndef GPIO_SIGNAL_DEFINITIONS_H
+#define GPIO_SIGNAL_DEFINITIONS_H
 
 #include "muondetector_shared_global.h"
 
@@ -8,15 +8,12 @@
 #include <QString>
 #include <map>
 
-// define the pins which are used to interface the raspberry pi
-// UBIAS_EN is the power on/off pin for bias voltage
-// PREAMP_1/2 enables the DC voltage to power the preamp through the signal cable
-// EVT_AND, EVT_XOR are the event inputs from AND and XOR gates
+// Define the signals of the hardware interface to the MuonPi HAT
 // Note: The pin definitions are enum constants and have nothing to do with the actual pin numbers
 // of the RPi GPIO header. To be independent of the specific hardware implementation,
-// the pin numbers for these signals are defined in gpio_pin_mapping.h on the daemon side
+// the pin numbers for these signals are defined in gpio_pin_mapping.h on the daemon side through the static map GPIO_PINMAP
 
-enum GPIO_PIN {		UBIAS_EN, 
+enum GPIO_SIGNAL {	UBIAS_EN, 
 					PREAMP_1, PREAMP_2, 
 					EVT_AND, EVT_XOR, 
 					GAIN_HL, ADC_READY, 
@@ -27,7 +24,7 @@ enum GPIO_PIN {		UBIAS_EN,
                     TDC_INTB,
                     TDC_STATUS,
 					IN_POL1, IN_POL2,
-					UNDEFINED_PIN=255
+					UNDEFINED_SIGNAL=255
 				};
 
 enum SIGNAL_DIRECTION { DIR_UNDEFINED, DIR_IN, DIR_OUT, DIR_IO };
@@ -39,7 +36,7 @@ struct GpioSignalDescriptor {
 //	SIGNAL_POLARITY polarity;
 };
 
-static const QMap<GPIO_PIN, GpioSignalDescriptor> GPIO_SIGNAL_MAP =
+static const QMap<GPIO_SIGNAL, GpioSignalDescriptor> GPIO_SIGNAL_MAP =
 	{	{ UBIAS_EN,			{ "UBIAS_EN", DIR_OUT } },
 		{ PREAMP_1,			{ "PREAMP_1", DIR_OUT } },
 		{ PREAMP_2,			{ "PREAMP_2", DIR_OUT } },
@@ -58,7 +55,7 @@ static const QMap<GPIO_PIN, GpioSignalDescriptor> GPIO_SIGNAL_MAP =
         { TDC_STATUS, 		{ "TDC_STATUS", DIR_OUT} },
 		{ IN_POL1, 			{ "IN_POL1", DIR_OUT} },
 		{ IN_POL2, 			{ "IN_POL2", DIR_OUT} },
-		{ UNDEFINED_PIN, 	{ "UNDEFINED_PIN", DIR_UNDEFINED} }
+		{ UNDEFINED_SIGNAL, { "UNDEFINED_SIGNAL", DIR_UNDEFINED} }
 	};
 
 
@@ -77,4 +74,4 @@ enum class TIMING_MUX_SELECTION : uint8_t {
 	UNDEFINED = 255
 };
 	
-#endif // GPIO_PIN_DEFINITIONS_H
+#endif // GPIO_SIGNAL_DEFINITIONS_H

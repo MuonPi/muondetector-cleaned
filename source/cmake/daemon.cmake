@@ -6,7 +6,7 @@ if(NOT WIN32) # added to make program editable in qt-creator on windows
 
 find_library(CRYPTOPP crypto++ REQUIRED)
 find_library(CONFIGPP config++ REQUIRED)
-find_library(PIGPIOD_IF2 pigpiod_if2 REQUIRED)
+find_library(LIBGPIOD gpiod REQUIRED)
 find_library(RT rt REQUIRED)
 find_library(MOSQUITTO mosquitto REQUIRED)
 
@@ -26,6 +26,7 @@ set(MUONDETECTOR_DAEMON_SOURCE_FILES
     "${MUONDETECTOR_DAEMON_SRC_DIR}/gpio_mapping.cpp"
     "${MUONDETECTOR_DAEMON_SRC_DIR}/logengine.cpp"
     "${MUONDETECTOR_DAEMON_SRC_DIR}/geohash.cpp"
+    "${MUONDETECTOR_DAEMON_SRC_DIR}/ratebuffer.cpp"
     "${MUONDETECTOR_DAEMON_SRC_DIR}/tdc7200.cpp"
     "${MUONDETECTOR_DAEMON_SRC_DIR}/i2c/i2cbusses.c"
     "${MUONDETECTOR_DAEMON_SRC_DIR}/i2c/i2cdevices/adafruit_ssd1306/adafruit_ssd1306.cpp"
@@ -59,6 +60,7 @@ set(MUONDETECTOR_DAEMON_HEADER_FILES
     "${MUONDETECTOR_DAEMON_HEADER_DIR}/tdc7200.h"
     "${MUONDETECTOR_DAEMON_HEADER_DIR}/logengine.h"
     "${MUONDETECTOR_DAEMON_HEADER_DIR}/geohash.h"
+    "${MUONDETECTOR_DAEMON_HEADER_DIR}/ratebuffer.h"
     "${MUONDETECTOR_DAEMON_HEADER_DIR}/i2c/addresses.h"
     "${MUONDETECTOR_DAEMON_HEADER_DIR}/i2c/custom_i2cdetect.h"
     "${MUONDETECTOR_DAEMON_HEADER_DIR}/i2c/i2cbusses.h"
@@ -129,12 +131,13 @@ target_include_directories(muondetector-daemon PUBLIC
 target_link_libraries(muondetector-daemon
     Qt5::Network Qt5::SerialPort
     crypto++
-    pigpiod_if2
+    gpiod
     rt
     config++
     mosquitto
     muondetector-shared
     muondetector-shared-mqtt
+    pthread
     )
 
 
@@ -164,13 +167,11 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/muondetector-login.1.gz" DESTINATION 
 install(FILES "${MUONDETECTOR_CONFIG_DIR}/copyright" DESTINATION "${CMAKE_INSTALL_DOCDIR}-daemon" COMPONENT daemon)
 install(FILES ${MUONDETECTOR_DAEMON_INSTALL_FILES} DESTINATION "/etc/muondetector/" COMPONENT daemon)
 install(FILES "${MUONDETECTOR_DAEMON_CONFIG_DIR}/muondetector-daemon.service" DESTINATION "/lib/systemd/system" COMPONENT daemon)
-install(FILES "${MUONDETECTOR_DAEMON_CONFIG_DIR}/pigpiod.conf" DESTINATION "/etc/systemd/system/pigpiod.service.d/" COMPONENT daemon)
 install(PROGRAMS ${MUONDETECTOR_LOGIN_INSTALL_FILES} DESTINATION bin COMPONENT daemon)
 
 
 
 if (MUONDETECTOR_BUILD_GUI)
-set(CPACK_DEBIAN_DAEMON_PACKAGE_DEPENDS "pigpiod")
 set(CPACK_DEBIAN_DAEMON_PACKAGE_CONTROL_EXTRA "${MUONDETECTOR_DAEMON_CONFIG_DIR}/preinst;${MUONDETECTOR_DAEMON_CONFIG_DIR}/postinst;${MUONDETECTOR_DAEMON_CONFIG_DIR}/prerm;${MUONDETECTOR_DAEMON_CONFIG_DIR}/conffiles")
 set(CPACK_DEBIAN_DAEMON_PACKAGE_SECTION "net")
 set(CPACK_DEBIAN_DAEMON_DESCRIPTION " Daemon that controls the muon detector board.
@@ -180,7 +181,6 @@ set(CPACK_DEBIAN_DAEMON_DESCRIPTION " Daemon that controls the muon detector boa
 set(CPACK_COMPONENT_DAEMON_DESCRIPTION "${CPACK_DEBIAN_DAEMON_DESCRIPTION}")
 set(CPACK_DEBIAN_DAEMON_PACKAGE_NAME "muondetector-daemon")
 else ()
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "pigpiod")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${MUONDETECTOR_DAEMON_CONFIG_DIR}/preinst;${MUONDETECTOR_DAEMON_CONFIG_DIR}/postinst;${MUONDETECTOR_DAEMON_CONFIG_DIR}/prerm;${MUONDETECTOR_DAEMON_CONFIG_DIR}/conffiles")
 set(CPACK_DEBIAN_PACKAGE_SECTION "net")
 set(CPACK_DEBIAN_PACKAGE_DESCRIPTION " Daemon that controls the muon detector board.

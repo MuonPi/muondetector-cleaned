@@ -31,7 +31,7 @@ signals:
     void preamp2EnableChanged(bool state);
     void polarityChanged(bool pol1, bool pol2);
 	void timingSelectionChanged(uint8_t sel);
-	void triggerSelectionChanged(GPIO_PIN signal);
+	void triggerSelectionChanged(GPIO_SIGNAL signal);
 	void gainSwitchChanged(bool state);
 
 public slots:
@@ -41,7 +41,7 @@ public slots:
     void onInputSwitchReceived(uint8_t index);
     void onBiasSwitchReceived(bool state);
     void onPreampSwitchReceived(uint8_t channel, bool state);
-    void onTriggerSelectionReceived(GPIO_PIN signal);
+    void onTriggerSelectionReceived(GPIO_SIGNAL signal);
     void onGainSwitchReceived(bool state);
     void onTemperatureReceived(float temp);
     void onTimepulseReceived();

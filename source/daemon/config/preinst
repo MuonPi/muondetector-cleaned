@@ -1,6 +1,12 @@
 #!/bin/bash -e
 
 mkdir -p /var/muondetector
-useradd muonuser -g users -G dialout,pi,i2c,users -s /usr/sbin/nologin -r -N -M -b /var/muondetector || echo "User already exists"
+if id muonuser &> /dev/null; then
+    # transitional code until all older versions of muondetector-daemon are updated.
+    echo "muonuser exists, adding to group gpio."
+    adduser muonuser gpio
+else
+    useradd muonuser -g users -G dialout,pi,i2c,users,gpio -s /usr/sbin/nologin -r -N -M -b /var/muondetector
+ fi
 chown muonuser:users /var/muondetector
 chmod g+w /var/muondetector

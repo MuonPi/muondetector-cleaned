@@ -12,11 +12,12 @@
 #include <QDataStream>
 #include <QList>
 #include <QMap>
-
+#include <chrono>
 
 enum ADC_SAMPLING_MODE {ADC_MODE_DISABLED=0, ADC_MODE_PEAK=1, ADC_MODE_TRACE=2 };
 enum TIMING_MUX_INPUTS { MUX_AND=0, MUX_XOR=1, MUX_DISC1=2, MUX_DISC2=3 };
 
+using EventTime = std::chrono::time_point<std::chrono::system_clock>;
 
 struct CalibStruct {
 public:

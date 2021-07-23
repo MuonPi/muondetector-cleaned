@@ -32,7 +32,7 @@ public:
 	//using I2C_DEVICE_MODE;
 
 	i2cDevice();
-	i2cDevice(const char* busAddress);
+	i2cDevice(const char* busAddress = "/dev/i2c-1");
 	i2cDevice(uint8_t slaveAddress);
 	i2cDevice(const char* busAddress, uint8_t slaveAddress);
 	virtual ~i2cDevice();

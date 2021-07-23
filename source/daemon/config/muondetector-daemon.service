@@ -1,8 +1,6 @@
 [Unit]
 Description=muondetector-daemon - Daemon for custom muondetector board
-Requires=pigpiod.service
-BindsTo=pigpiod.service
-After=pigpiod.service sockets.target
+After=sockets.target
 
 [Service]
 Type=simple

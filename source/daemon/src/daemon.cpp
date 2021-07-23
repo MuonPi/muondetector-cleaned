@@ -14,8 +14,9 @@
 #include <iostream>
 #include <muondetector_structs.h>
 #include <config.h>
-#include <logengine.h>
+//#include <logengine.h>
 #include <geohash.h>
+//#include <ratebuffer.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -200,12 +201,12 @@ Daemon::Daemon(QString username, QString password, QString new_gpsdevname, int n
     qRegisterMetaType<UbxTimePulseStruct>("UbxTimePulseStruct");
     qRegisterMetaType<UbxDopStruct>("UbxDopStruct");
     qRegisterMetaType<timespec>("timespec");
-    qRegisterMetaType<GPIO_PIN>("GPIO_PIN");
+    qRegisterMetaType<GPIO_SIGNAL>("GPIO_SIGNAL");
     qRegisterMetaType<GnssMonHwStruct>("GnssMonHwStruct");
     qRegisterMetaType<GnssMonHw2Struct>("GnssMonHw2Struct");
     qRegisterMetaType<UbxTimeMarkStruct>("UbxTimeMarkStruct");
     qRegisterMetaType<I2cDeviceEntry>("I2cDeviceEntry");
-
+	qRegisterMetaType<PigpiodHandler::EventEdge>("PigpiodHandler::EventEdge");
     // signal handling
     setup_unix_signal_handlers();
     if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sighupFd)) {
@@ -294,7 +295,7 @@ Daemon::Daemon(QString username, QString password, QString new_gpsdevname, int n
         cout<<"GPIO pin mapping:"<<endl;
 
         for (auto signalIt=GPIO_PINMAP.begin(); signalIt!=GPIO_PINMAP.end(); signalIt++) {
-            const GPIO_PIN signalId=signalIt->first;
+            const GPIO_SIGNAL signalId=signalIt->first;
             cout<<GPIO_SIGNAL_MAP[signalId].name<<"   \t: "<<signalIt->second;
             switch (GPIO_SIGNAL_MAP[signalId].direction) {
                 case DIR_IN: cout<<" (in)";
@@ -308,7 +309,6 @@ Daemon::Daemon(QString username, QString password, QString new_gpsdevname, int n
             cout<<endl;
         }
     }
-
 
     mqttHandlerThread = new QThread();
     mqttHandlerThread->setObjectName("muondetector-daemon-mqtt");
@@ -560,7 +560,8 @@ Daemon::Daemon(QString username, QString password, QString new_gpsdevname, int n
     preampStatus[1]=preamp2;
     gainSwitch=gain;
     biasON = bias_ON;
-    eventTrigger = (GPIO_PIN)new_eventTrigger;
+    eventTrigger = (GPIO_SIGNAL)new_eventTrigger;
+//    eventTrigger = UNDEFINED_SIGNAL;
     polarity1=new_polarity1;
     polarity2=new_polarity2;
 
@@ -623,13 +624,33 @@ Daemon::Daemon(QString username, QString password, QString new_gpsdevname, int n
     }
     flush(cout);
 
-    // connect to the pigpio daemon interface for gpio control
-    connectToPigpiod();
-
-    // set up histograms
+	// set up histograms
     setupHistos();
 
-    // establish ublox gnss module connection
+	// connect to the pigpio daemon interface for gpio control
+    connectToPigpiod();
+
+	// set up the rate buffer for all GPIO signals
+	rateBuffer.clear();
+	connect(pigHandler, &PigpiodHandler::event, &rateBuffer, &RateBuffer::onEvent);
+	connect(&rateBuffer, &RateBuffer::filteredEvent, this, &Daemon::sendGpioPinEvent);
+	connect(&rateBuffer, &RateBuffer::filteredEvent, this, &Daemon::onGpioPinEvent);
+
+	connect(this, &Daemon::eventInterval, this, [this](quint64 nsecs)
+    { 	if (histoMap.find("gpioEventInterval")!=histoMap.end()) {
+            //checkRescaleHisto(histoMap["gpioEventInterval"], 1e-6*nsecs);
+            histoMap["gpioEventInterval"].fill(1e-6*nsecs);
+        }
+    } );
+
+    connect(this, &Daemon::eventInterval, this, [this](quint64 nsecs)
+    { 	if (histoMap.find("gpioEventIntervalShort")!=histoMap.end()) {
+            if (nsecs/1000<=histoMap["gpioEventIntervalShort"].getMax())
+                histoMap["gpioEventIntervalShort"].fill((double)nsecs/1000.);
+        }
+    } );
+
+	// establish ublox gnss module connection
     connectToGps();
     //delay(1000);
 
@@ -679,19 +700,24 @@ Daemon::~Daemon() {
 }
 
 void Daemon::connectToPigpiod(){
-    const QVector<unsigned int> gpio_pins({ GPIO_PINMAP[EVT_AND], GPIO_PINMAP[EVT_XOR],
+/*
+	const QVector<unsigned int> gpio_pins({ GPIO_PINMAP[EVT_AND], GPIO_PINMAP[EVT_XOR],
                                             GPIO_PINMAP[TIMEPULSE], GPIO_PINMAP[EXT_TRIGGER] });
+*/
+	const std::vector<unsigned int> gpio_pins({ GPIO_PINMAP[EVT_AND], GPIO_PINMAP[EVT_XOR],
+                                            GPIO_PINMAP[TIMEPULSE] });
     pigHandler = new PigpiodHandler(gpio_pins);
-    tdc7200 = new TDC7200(GPIO_PINMAP[TDC_INTB]);
+    //tdc7200 = new TDC7200(GPIO_PINMAP[TDC_INTB]);
     pigThread = new QThread();
     pigThread->setObjectName("muondetector-daemon-pigpio");
     pigHandler->moveToThread(pigThread);
-    tdc7200->moveToThread(pigThread);
+    //tdc7200->moveToThread(pigThread);
     connect(this, &Daemon::aboutToQuit, pigThread, &QThread::quit);
     connect(pigThread, &QThread::finished, pigThread, &QThread::deleteLater);
 
     //pighandler <-> tdc
-    connect(pigHandler, &PigpiodHandler::spiData, tdc7200, &TDC7200::onDataReceived);
+/*
+	connect(pigHandler, &PigpiodHandler::spiData, tdc7200, &TDC7200::onDataReceived);
     connect(pigHandler, &PigpiodHandler::signal, tdc7200, &TDC7200::onDataAvailable);
     connect(tdc7200, &TDC7200::readData, pigHandler, &PigpiodHandler::readSpi);
     connect(tdc7200, &TDC7200::writeData, pigHandler, &PigpiodHandler::writeSpi);
@@ -709,39 +735,18 @@ void Daemon::connectToPigpiod(){
     });
     connect(pigThread, &QThread::started, tdc7200, &TDC7200::initialise);
     connect(pigThread, &QThread::finished, tdc7200, &TDC7200::deleteLater);
-
+*/
     //pigHandler <-> thread & daemon
     connect(this, &Daemon::aboutToQuit, pigHandler, &PigpiodHandler::stop);
     connect(pigThread, &QThread::finished, pigHandler, &PigpiodHandler::deleteLater);
-    connect(this, &Daemon::GpioSetOutput, pigHandler, &PigpiodHandler::setOutput);
-    connect(this, &Daemon::GpioSetInput, pigHandler, &PigpiodHandler::setInput);
-    connect(this, &Daemon::GpioSetPullUp, pigHandler, &PigpiodHandler::setPullUp);
-    connect(this, &Daemon::GpioSetPullDown, pigHandler, &PigpiodHandler::setPullDown);
-    connect(this, &Daemon::GpioSetState, pigHandler, &PigpiodHandler::setGpioState);
-    connect(this, &Daemon::GpioRegisterForCallback, pigHandler, &PigpiodHandler::registerForCallback);
-    connect(pigHandler, &PigpiodHandler::signal, this, &Daemon::sendGpioPinEvent);
-    connect(pigHandler, &PigpiodHandler::samplingTrigger, this, &Daemon::sampleAdc0Event);
-    connect(pigHandler, &PigpiodHandler::eventInterval, this, [this](quint64 nsecs)
-    { 	if (histoMap.find("gpioEventInterval")!=histoMap.end()) {
-            checkRescaleHisto(histoMap["gpioEventInterval"], 1e-6*nsecs);
-            histoMap["gpioEventInterval"].fill(1e-6*nsecs);
-        }
-    } );
-    connect(pigHandler, &PigpiodHandler::eventInterval, this, [this](quint64 nsecs)
-    { 	if (histoMap.find("gpioEventIntervalShort")!=histoMap.end()) {
-            if (nsecs/1000<=histoMap["gpioEventIntervalShort"].getMax())
-                histoMap["gpioEventIntervalShort"].fill((double)nsecs/1000.);
-        }
-    } );
-    connect(pigHandler, &PigpiodHandler::timePulseDiff, this, [this](qint32 usecs)
-    { 	if (histoMap.find("TPTimeDiff")!=histoMap.end()) {
-            checkRescaleHisto(histoMap["TPTimeDiff"], usecs);
-            histoMap["TPTimeDiff"].fill((double)usecs);
-        }
-        /*cout<<"TP time diff: "<<usecs<<" us"<<endl;*/
-    } );
-    pigHandler->setSamplingTriggerSignal(eventTrigger);
-    connect(this, &Daemon::setSamplingTriggerSignal, pigHandler, &PigpiodHandler::setSamplingTriggerSignal);
+    connect(this, &Daemon::GpioSetOutput, pigHandler, &PigpiodHandler::setPinOutput);
+    connect(this, &Daemon::GpioSetInput, pigHandler, &PigpiodHandler::setPinInput);
+///    connect(this, &Daemon::GpioSetPullUp, pigHandler, &PigpiodHandler::setPullUp);
+///    connect(this, &Daemon::GpioSetPullDown, pigHandler, &PigpiodHandler::setPullDown);
+    connect(this, &Daemon::GpioSetState, pigHandler, &PigpiodHandler::setPinState);
+    connect(this, &Daemon::GpioRegisterForCallback, pigHandler, &PigpiodHandler::registerInterrupt);
+//    connect(pigHandler, &PigpiodHandler::signal, this, &Daemon::onGpioPinEvent);
+//    connect(pigHandler, &PigpiodHandler::timePulseDiff, this, [this](qint32 usecs)
 
     struct timespec ts_res;
     clock_getres(CLOCK_REALTIME, &ts_res);
@@ -756,7 +761,11 @@ void Daemon::connectToPigpiod(){
     //connect(this, &Daemon::aboutToQuit, [this](){this->toConsole("aboutToQuit called and signal emitted\n");});
     timespec_get(&lastRateInterval, TIME_UTC);
     startOfProgram = lastRateInterval;
-    connect(pigHandler, &PigpiodHandler::signal, this, [this](uint8_t gpio_pin){
+
+// TODO: delete following block
+/*
+	connect(pigHandler, &PigpiodHandler::signal, this, [this](uint8_t gpio_pin){
+//    connect(&rateBuffer, &RateBuffer::throttledSignal, this, [this](uint8_t gpio_pin){
         rateCounterIntervalActualisation();
         if (gpio_pin==GPIO_PINMAP[EVT_XOR]){
             xorCounts.back()++;
@@ -772,6 +781,7 @@ void Daemon::connectToPigpiod(){
             //andCounts.push_back(value);
         }
     });
+    */
     pigThread->start();
     rateBufferReminder.setInterval(rateBufferInterval);
     rateBufferReminder.setSingleShot(false);
@@ -790,16 +800,22 @@ void Daemon::connectToPigpiod(){
     emit GpioSetState(GPIO_PINMAP[STATUS1], 0);
     emit GpioSetState(GPIO_PINMAP[STATUS2], 0);
     emit GpioSetPullUp(GPIO_PINMAP[ADC_READY]);
-    emit GpioRegisterForCallback(GPIO_PINMAP[ADC_READY], 1);
+    emit GpioRegisterForCallback(GPIO_PINMAP[ADC_READY], PigpiodHandler::EventEdge::RisingEdge);
+	auto it=GPIO_PINMAP.find(eventTrigger);
+	if (it != GPIO_PINMAP.end()) {
+//		pigHandler->setSamplingTriggerSignal( GPIO_PINMAP[eventTrigger] );
+		emit GpioRegisterForCallback(GPIO_PINMAP[eventTrigger], PigpiodHandler::EventEdge::RisingEdge);
+	}
+//    connect(this, &Daemon::setSamplingTriggerSignal, pigHandler, &PigpiodHandler::setSamplingTriggerSignal);
 
     if (HW_VERSION>1) {
-        emit GpioSetInput(GPIO_PINMAP[PREAMP_FAULT]);
-        emit GpioRegisterForCallback(GPIO_PINMAP[PREAMP_FAULT], 0);
+        //emit GpioSetInput(GPIO_PINMAP[PREAMP_FAULT]);
+        emit GpioRegisterForCallback(GPIO_PINMAP[PREAMP_FAULT], PigpiodHandler::EventEdge::FallingEdge);
         emit GpioSetPullUp(GPIO_PINMAP[PREAMP_FAULT]);
-        emit GpioSetInput(GPIO_PINMAP[TDC_INTB]);
-        emit GpioRegisterForCallback(GPIO_PINMAP[TDC_INTB], 0);
-        emit GpioSetInput(GPIO_PINMAP[TIME_MEAS_OUT]);
-        emit GpioRegisterForCallback(GPIO_PINMAP[TIME_MEAS_OUT], 0);
+        //emit GpioSetInput(GPIO_PINMAP[TDC_INTB]);
+        emit GpioRegisterForCallback(GPIO_PINMAP[TDC_INTB], PigpiodHandler::EventEdge::FallingEdge);
+        //emit GpioSetInput(GPIO_PINMAP[TIME_MEAS_OUT]);
+        emit GpioRegisterForCallback(GPIO_PINMAP[TIME_MEAS_OUT], PigpiodHandler::EventEdge::FallingEdge);
     }
     if (HW_VERSION>=3) {
         emit GpioSetOutput(GPIO_PINMAP[IN_POL1]);
@@ -951,13 +967,13 @@ void Daemon::setupHistos() {
     hist=Histogram("UbxEventLength",100,50.,149.);
     hist.setUnit("ns");
     histoMap["UbxEventLength"]=hist;
-    hist=Histogram("gpioEventInterval",400,0.,1500.);
+    hist=Histogram("gpioEventInterval",400,0.,2000.);
     hist.setUnit("ms");
     histoMap["gpioEventInterval"]=hist;
     hist=Histogram("gpioEventIntervalShort",50,0.,49.);
     hist.setUnit("us");
     histoMap["gpioEventIntervalShort"]=hist;
-    hist=Histogram("UbxEventInterval",200,0.,1100.);
+    hist=Histogram("UbxEventInterval",400,0.,2000.);
     hist.setUnit("ms");
     histoMap["UbxEventInterval"]=hist;
     hist=Histogram("TPTimeDiff",200,-999.,1000.);
@@ -1008,24 +1024,23 @@ void Daemon::checkRescaleHisto(Histogram& hist, double newValue) {
     double ofl=hist.getOverflow();
     entries-=ufl+ofl;
     double range=hist.getMax()-hist.getMin();
-    if (ufl>0. && ofl>0. && (ufl+ofl)>0.05*entries) {
-        // range is too small, underflow and overflow have more than 5% of all entries
+    if (ufl>0. && ofl>0. && (ufl+ofl)>0.02*entries) {
+        // range is too small, underflow and overflow have more than 2% of all entries
         rescaleHisto(hist, hist.getMean(), 1.2*range);
-    } else if (ufl>0.05*entries) {
+    } else if (ufl>0.02*entries) {
 //		if (entries<1.) rescaleHisto(hist, hist.getMin()-(hist.getMax()-hist.getMin())/2.);
         if (entries<1.) rescaleHisto(hist, newValue);
         else rescaleHisto(hist, hist.getMean(), 1.2*range);
-    } else if (ofl>0.05*entries) {
+    } else if (ofl>0.02*entries) {
 //		if (entries<1.) rescaleHisto(hist, hist.getMax()+(hist.getMax()-hist.getMin())/2.);
         if (entries<1.) rescaleHisto(hist, newValue);
-        else rescaleHisto(hist, hist.getMean(), 1.1*range);
+        else rescaleHisto(hist, hist.getMean(), 1.2*range);
     } else if (ufl<1e-3 && ofl<1e-3) {
         // check if range is too wide
         if (entries>100) {
             int lowest = hist.getLowestOccupiedBin();
             int highest = hist.getHighestOccupiedBin();
-            if ((float)lowest/hist.getNrBins()>0.45) rescaleHisto(hist, hist.getMean(), 0.6*range);
-            else if ((float)(hist.getNrBins()-highest)/hist.getNrBins()>0.45) rescaleHisto(hist, hist.getMean(), 0.6*range);
+            if ((float)lowest/hist.getNrBins()>0.45 && (float)(hist.getNrBins()-highest)/hist.getNrBins()>0.45) rescaleHisto(hist, hist.getMean(), 0.75*range);
         }
     }
 }
@@ -1164,7 +1179,7 @@ void Daemon::receivedTcpMessage(TcpMessage tcpMessage) {
     if (msgID == TCP_MSG_KEY::MSG_EVENTTRIGGER){
         unsigned int signal;
         *(tcpMessage.dStream) >> signal;
-        setEventTriggerSelection((GPIO_PIN)signal);
+        setEventTriggerSelection((GPIO_SIGNAL)signal);
         usleep(1000);
         sendEventTriggerSelection();
         return;
@@ -1450,17 +1465,51 @@ void Daemon::sendDacReadbackValue(uint8_t channel, float voltage) {
     emit sendTcpMessage(tcpMessage);
 }
 
-void Daemon::sendGpioPinEvent(uint8_t gpio_pin) {
-    TcpMessage tcpMessage(TCP_MSG_KEY::MSG_GPIO_EVENT);
-    //unsigned int gpio_function=0;
+void Daemon::onGpioPinEvent(unsigned int gpio, EventTime event_time) {
     // reverse lookup of gpio function from given pin (first occurence)
-    auto result=std::find_if(GPIO_PINMAP.begin(), GPIO_PINMAP.end(), [&gpio_pin](const std::pair<GPIO_PIN,unsigned int>& item)
-                    { return item.second==gpio_pin; }
+    auto result=std::find_if(GPIO_PINMAP.begin(), GPIO_PINMAP.end(), [&gpio](const std::pair<GPIO_SIGNAL,unsigned int>& item)
+                    { return item.second == gpio; }
+                    );
+    if (result != GPIO_PINMAP.end()) {
+		if ( result->first == TIMEPULSE) {
+			auto usecs = std::chrono::duration_cast<std::chrono::microseconds>(event_time.time_since_epoch()).count();
+			usecs = usecs % 1000000LL;
+			if ( usecs > 500000L ) {
+				usecs -= 1000000LL;
+			}
+			if (histoMap.find("TPTimeDiff") != histoMap.end()) {
+				checkRescaleHisto(histoMap["TPTimeDiff"], usecs);
+				histoMap["TPTimeDiff"].fill((double)usecs);
+			}
+			if (verbose>2) qDebug()<<"TP time diff:"<<usecs<<"us";
+		} else if ( result->first == EVT_XOR || result->first == EVT_AND ) {
+	        rateCounterIntervalActualisation();
+			if ( result->first == EVT_XOR ) {
+				xorCounts.back()++;
+			} else if ( result->first == EVT_AND ) {
+				andCounts.back()++;
+			}
+        }
+		if ( result->first == eventTrigger ) {
+			auto nsecs = rateBuffer.lastInterval(gpio).count();
+			if ( nsecs > 0 ) { 
+				emit eventInterval( rateBuffer.lastInterval(gpio).count() );
+			}
+			emit sampleAdc0Event();
+		}
+    }
+}
+
+void Daemon::sendGpioPinEvent(unsigned int gpio, EventTime event_time) {
+    // reverse lookup of gpio function from given pin (first occurence)
+    auto result=std::find_if(GPIO_PINMAP.begin(), GPIO_PINMAP.end(), [&gpio](const std::pair<GPIO_SIGNAL,unsigned int>& item)
+                    { return item.second==gpio; }
                     );
     if (result!=GPIO_PINMAP.end()) {
-        *(tcpMessage.dStream) << (GPIO_PIN)result->first;
-        emit sendTcpMessage(tcpMessage);
-    }
+		TcpMessage tcpMessage(TCP_MSG_KEY::MSG_GPIO_EVENT);
+		*(tcpMessage.dStream) << (GPIO_SIGNAL)result->first;
+		emit sendTcpMessage(tcpMessage);
+	}
 }
 
 void Daemon::sendBiasVoltage(){
@@ -1502,8 +1551,8 @@ void Daemon::sendPcaChannel(){
 
 void Daemon::sendEventTriggerSelection(){
     if (pigHandler==nullptr) return;
-    TcpMessage tcpMessage(TCP_MSG_KEY::MSG_EVENTTRIGGER);
-    *(tcpMessage.dStream) << (GPIO_PIN)pigHandler->samplingTriggerSignal;
+	TcpMessage tcpMessage(TCP_MSG_KEY::MSG_EVENTTRIGGER);
+	*(tcpMessage.dStream) << eventTrigger;
     emit sendTcpMessage(tcpMessage);
 }
 
@@ -1689,17 +1738,19 @@ void Daemon::getTemperature(){
     emit sendTcpMessage(tcpMessage);
 }
 
-void Daemon::setEventTriggerSelection(GPIO_PIN signal) {
+void Daemon::setEventTriggerSelection(GPIO_SIGNAL signal) {
     if (pigHandler==nullptr) return;
     auto it=GPIO_PINMAP.find(signal);
-    if (it==GPIO_PINMAP.end()) return;
+    if (it==GPIO_PINMAP.end()) {
+		return;
+	}
 
-    if (verbose > 0){
-        qInfo() << "changed event selection to signal " << (unsigned int)signal;
+    if ( verbose > 0 ){
+        qInfo() << "changed event selection to signal" << GPIO_SIGNAL_MAP[signal].name;
     }
-    emit setSamplingTriggerSignal(signal);
-    emit logParameter(LogParameter("gpioTriggerSelection", "0x"+QString::number((int)pigHandler->samplingTriggerSignal,16), LogParameter::LOG_EVERY));
-    //sendEventTriggerSelection();
+	emit GpioRegisterForCallback( it->second, PigpiodHandler::EventEdge::RisingEdge );
+	eventTrigger = signal;
+    emit logParameter(LogParameter("gpioTriggerSelection", "0x"+QString::number((int)signal,16), LogParameter::LOG_EVERY));
 }
 
 // ALL FUNCTIONS ABOUT SETTINGS FOR THE I2C-DEVICES (DAC, ADC, PCA...)
@@ -2463,7 +2514,7 @@ void Daemon::onLogParameterPolled(){
     }
 
     if (pca && pca->devicePresent()) emit logParameter(LogParameter("ubxInputSwitch", "0x"+QString::number(pcaPortMask,16), LogParameter::LOG_ON_CHANGE));
-    if (pigHandler!=nullptr) emit logParameter(LogParameter("gpioTriggerSelection", "0x"+QString::number((int)pigHandler->samplingTriggerSignal,16), LogParameter::LOG_ON_CHANGE));
+    if (pigHandler!=nullptr) emit logParameter(LogParameter("gpioTriggerSelection", "0x"+QString::number((int)eventTrigger,16), LogParameter::LOG_ON_CHANGE));
     //logBiasValues();
     if (adc && !(adc->getStatus() & i2cDevice::MODE_UNREACHABLE)) {
 /*
@@ -2536,6 +2587,21 @@ void Daemon::onLogParameterPolled(){
         emit logParameter(LogParameter("systemFreeSwap", QString::number(1e-6*info.freeswap/info.mem_unit)+" Mb", LogParameter::LOG_AVERAGE));
         emit logParameter(LogParameter("systemLoadAvg", QString::number(info.loads[0]*f_load)+" ", LogParameter::LOG_AVERAGE));
     }
+    
+    // rate buffer debug output
+    if ( verbose > 2 ) {
+        qDebug() << "GPIO Rate Summary:";
+		for (auto signalIt=GPIO_PINMAP.begin(); signalIt!=GPIO_PINMAP.end(); signalIt++) {
+            const GPIO_SIGNAL signalId=signalIt->first;
+            if (GPIO_SIGNAL_MAP[signalId].direction == DIR_IN )  {
+				qDebug()<<GPIO_SIGNAL_MAP[signalId].name
+						<<"pin:"<<signalIt->second
+						<<"rate:"<<rateBuffer.avgRate( signalIt->second )<<"Hz"
+						<<"deadtime"<<rateBuffer.currentDeadtime( signalIt->second ).count()<<"us";
+			}
+        }
+	}
+    
 //		updateOledDisplay();
 }
 

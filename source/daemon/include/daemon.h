@@ -10,18 +10,19 @@
 #include <QVariant>
 #include <time.h>
 
-#include "tcpconnection.h"
-#include "custom_io_operators.h"
-#include "qtserialublox.h"
-#include "pigpiodhandler.h"
-#include "tdc7200.h"
-#include "filehandler.h"
-#include "mqtthandler.h"
-#include "i2c/i2cdevices.h"
-#include "calibration.h"
-#include "logparameter.h"
-#include "histogram.h"
-#include "logengine.h"
+#include <tcpconnection.h>
+#include <custom_io_operators.h>
+#include <qtserialublox.h>
+#include <pigpiodhandler.h>
+#include <tdc7200.h>
+#include <filehandler.h>
+#include <mqtthandler.h>
+#include <i2c/i2cdevices.h>
+#include <calibration.h>
+#include <logparameter.h>
+#include <histogram.h>
+#include <logengine.h>
+#include <ratebuffer.h>
 
 // for sig handling:
 #include <sys/types.h>
@@ -30,7 +31,8 @@
 
 struct CalibStruct;
 struct UbxTimeMarkStruct;
-enum GPIO_PIN;
+
+//enum GPIO_SIGNAL;
 
 class Property {
 public:
@@ -95,7 +97,7 @@ private:
 
 struct RateScanInfo {
     uint8_t origPcaMask=0;
-    GPIO_PIN origEventTrigger=GPIO_PIN::UNDEFINED_PIN;
+    GPIO_SIGNAL origEventTrigger=GPIO_SIGNAL::UNDEFINED_SIGNAL;
     uint16_t lastEvtCounter=0;
     uint8_t thrChannel=0;
     float origThr=3.3;
@@ -110,7 +112,7 @@ struct RateScanInfo {
 struct RateScan {
 //	void addScanPoint(double scanpar, double a_rate) { scanMap[scanpar].append(a_rate); }
     uint8_t origPcaMask=0;
-    GPIO_PIN origEventTrigger=GPIO_PIN::UNDEFINED_PIN;
+    GPIO_SIGNAL origEventTrigger=GPIO_SIGNAL::UNDEFINED_SIGNAL;
     float origScanPar=3.3;
     double minScanPar=0.;
     double maxScanPar=1.;
@@ -171,7 +173,8 @@ public slots:
     void onGpsMonHW2Updated(const GnssMonHw2Struct& hw2);
     void receivedTcpMessage(TcpMessage tcpMessage);
     void pollAllUbxMsgRate();
-    void sendGpioPinEvent(uint8_t gpio_pin);
+    void onGpioPinEvent(unsigned int gpio, EventTime event_time);
+    void sendGpioPinEvent(unsigned int gpio, EventTime event_time);
     void onGpsPropertyUpdatedGeodeticPos(const GeodeticPos& pos);
     void UBXReceivedVersion(const QString& swString, const QString& hwString, const QString& protString);
     void sampleAdc0Event();
@@ -204,18 +207,19 @@ signals:
     void UBXSetMinMaxSVs(uint8_t minSVs, uint8_t maxSVs);
     void UBXSetMinCNO(uint8_t minCNO);
     void GpioSetInput(unsigned int gpio);
-    void GpioSetOutput(unsigned int gpio);
+    void GpioSetOutput(unsigned int gpio, bool initState = false);
     void GpioSetPullUp(unsigned int gpio);
     void GpioSetPullDown(unsigned int gpio);
     void GpioSetState(unsigned int gpio, bool state);
-    void GpioRegisterForCallback(unsigned int gpio, bool edge); // false=falling, true=rising
+    void GpioRegisterForCallback(unsigned int gpio, PigpiodHandler::EventEdge edge); // false=falling, true=rising
     void UBXSetCfgTP5(const UbxTimePulseStruct& tp);
     void UBXSetAopCfg(bool enable=true, uint16_t maxOrbErr=0);
     void UBXSaveCfg(uint8_t devMask=QtSerialUblox::DEV_BBR | QtSerialUblox::DEV_FLASH);
-    void setSamplingTriggerSignal(GPIO_PIN signalName);
+    void setSamplingTriggerSignal(unsigned int gpio);
     void timeMarkIntervalCountUpdate(uint16_t newCounts, double lastInterval);
     void requestMqttConnectionStatus();
 	void eventMessage(const QString& messageString);
+	void eventInterval(quint64 nsecs);
 
 private slots:
     void onRateBufferReminder();
@@ -228,7 +232,7 @@ private:
     void incomingConnection(qintptr socketDescriptor) override;
     void setPcaChannel(uint8_t channel); // channel 0 to 3
                                              // 0: coincidence ; 1: xor ; 2: discr 1 ; 3: discr 2
-    void setEventTriggerSelection(GPIO_PIN signal);
+    void setEventTriggerSelection(GPIO_SIGNAL signal);
     void sendPcaChannel();
     void sendEventTriggerSelection();
     void setDacThresh(uint8_t channel, float threshold); // channel 0 or 1 ; threshold in volts
@@ -275,7 +279,7 @@ private:
     Adafruit_SSD1306* oled = nullptr;
     float biasVoltage = 0.;
     bool biasON = false;
-    GPIO_PIN eventTrigger;
+    GPIO_SIGNAL eventTrigger { UNDEFINED_SIGNAL };
     bool gainSwitch = false;
     bool preampStatus[2];
     uint8_t pcaPortMask = 0;
@@ -305,7 +309,10 @@ private:
     // mqtt
     QPointer<MuonPi::MqttHandler> mqttHandler;
 
-    // signal handling
+	// rate buffer
+	RateBuffer rateBuffer;
+	
+	// signal handling
     static int sighupFd[2];
     static int sigtermFd[2];
     static int sigintFd[2];
