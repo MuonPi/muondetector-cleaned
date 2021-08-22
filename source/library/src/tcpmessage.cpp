@@ -13,17 +13,9 @@ TcpMessage::TcpMessage(quint16 tcpMsgID)
 }
 
 TcpMessage::TcpMessage(QByteArray& rawdata)
-    : m_data {rawdata}
+    : m_data { rawdata }
 {
-    //    quint64 pos = dStream->device()->pos();
     dStream = new QDataStream(&m_data, QIODevice::ReadWrite);
-    //    if (!dStream->device()->seek(0)){
-    //        qDebug() << "failed to seek position " << 0 << " in dStream";
-    //    }
-    //    *dStream >> msgID;
-    //    if(!dStream->device()->seek(pos)){
-    //        qDebug() << "failed to seek position " << pos << " in dStream";
-    //    }
     *dStream >> m_byteCount;
     *dStream >> m_msgID;
 }
@@ -50,22 +42,27 @@ TcpMessage::TcpMessage(const TcpMessage& tcpMessage)
     m_byteCount = tcpMessage.getByteCount();
 }
 
-void TcpMessage::setData(QByteArray& rawData) {
+void TcpMessage::setData(QByteArray& rawData)
+{
     m_data = rawData;
 }
 
-void TcpMessage::setMsgID(quint16 tcpMsgID) {
+void TcpMessage::setMsgID(quint16 tcpMsgID)
+{
     m_msgID = tcpMsgID;
 }
 
-const QByteArray& TcpMessage::getData() const{
+const QByteArray& TcpMessage::getData() const
+{
     return m_data;
 }
 
-quint16 TcpMessage::getMsgID() const{
+quint16 TcpMessage::getMsgID() const
+{
     return m_msgID;
 }
 
-quint16 TcpMessage::getByteCount() const{
+quint16 TcpMessage::getByteCount() const
+{
     return m_byteCount;
 }

@@ -7,16 +7,15 @@ namespace Ui {
 class SpiForm;
 }
 
-class SpiForm : public QWidget
-{
+class SpiForm : public QWidget {
     Q_OBJECT
 
 public:
-    explicit SpiForm(QWidget *parent = nullptr);
+    explicit SpiForm(QWidget* parent = nullptr);
     ~SpiForm();
 
 private:
-    Ui::SpiForm *ui;
+    Ui::SpiForm* ui;
 };
 
 #endif // SPIFORM_H

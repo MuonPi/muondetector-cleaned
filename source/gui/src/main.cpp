@@ -1,10 +1,10 @@
-#include <mainwindow.h>
 #include <QApplication>
 #include <QCommandLineParser>
+#include <mainwindow.h>
 
 #include "config.h"
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     QApplication a(argc, argv);
     QCoreApplication::setApplicationName("muondetector-gui");

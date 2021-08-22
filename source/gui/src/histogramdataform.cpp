@@ -2,21 +2,13 @@
 #include "ui_histogramdataform.h"
 #include <histogram.h>
 
-histogramDataForm::histogramDataForm(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::histogramDataForm)
+histogramDataForm::histogramDataForm(QWidget* parent)
+    : QWidget(parent)
+    , ui(new Ui::histogramDataForm)
 {
     ui->setupUi(this);
-    connect(ui->histoWidget, &CustomHistogram::histogramCleared, [this](const QString histogramName){
+    connect(ui->histoWidget, &CustomHistogram::histogramCleared, [this](const QString histogramName) {
         emit histogramCleared(histogramName);
-/*
-        auto it = fHistoMap.find(histogramName);
-        if (it!=fHistoMap.end()) {
-            it->clear();
-            this->updateHistoTable();
-        }
-*/
-//        qDebug()<<"sent signal histogramDataForm::histogramCleared("<<histogramName<<")";
     });
 }
 
@@ -25,39 +17,31 @@ histogramDataForm::~histogramDataForm()
     delete ui;
 }
 
-void histogramDataForm::onHistogramReceived(const Histogram &h)
+void histogramDataForm::onHistogramReceived(const Histogram& h)
 {
-//    int oldMapSize=fHistoMap.size();
-    QString name=QString::fromStdString(h.getName());
-    fHistoMap[name]=h;
-//    int newMapSize=fHistoMap.size();
-//    if (newMapSize!=oldMapSize)
-        updateHistoTable();
+    QString name = QString::fromStdString(h.getName());
+    fHistoMap[name] = h;
+    updateHistoTable();
     ui->nrHistosLabel->setText(QString::number(fHistoMap.size()));
-/*
-    ui->histoWidget->setTitle(name);
-    ui->histoWidget->setData(fHistoMap.first());
-*/
 }
 
 void histogramDataForm::updateHistoTable()
 {
     ui->tableWidget->setRowCount(fHistoMap.size());
-    int i=0;
-    for (auto it=fHistoMap.begin(); it!=fHistoMap.end(); it++)
-    {
-        QTableWidgetItem *newItem1 = new QTableWidgetItem(it.key());
-        newItem1->setSizeHint(QSize(120,24));
+    int i = 0;
+    for (auto it = fHistoMap.begin(); it != fHistoMap.end(); it++) {
+        QTableWidgetItem* newItem1 = new QTableWidgetItem(it.key());
+        newItem1->setSizeHint(QSize(120, 24));
         ui->tableWidget->setItem(i, 0, newItem1);
-        QTableWidgetItem *newItem2 = new QTableWidgetItem(QString::number(it.value().getEntries()));
-        newItem2->setSizeHint(QSize(100,24));
+        QTableWidgetItem* newItem2 = new QTableWidgetItem(QString::number(it.value().getEntries()));
+        newItem2->setSizeHint(QSize(100, 24));
         ui->tableWidget->setItem(i, 1, newItem2);
         i++;
     }
     if (fCurrentHisto.size()) {
-        for (int j=0; i<ui->tableWidget->rowCount(); j++) {
-            if (ui->tableWidget->item(j,0)->text()==fCurrentHisto) {
-                on_tableWidget_cellClicked(j,0);
+        for (int j = 0; i < ui->tableWidget->rowCount(); j++) {
+            if (ui->tableWidget->item(j, 0)->text() == fCurrentHisto) {
+                on_tableWidget_cellClicked(j, 0);
             }
         }
     }
@@ -65,11 +49,10 @@ void histogramDataForm::updateHistoTable()
 
 void histogramDataForm::on_tableWidget_cellClicked(int row, int /*column*/)
 {
-    QString name = ui->tableWidget->item(row,0)->text();
-//    ui->nrHistosLabel->setText(name);
+    QString name = ui->tableWidget->item(row, 0)->text();
     auto it = fHistoMap.find(name);
-    if (it!=fHistoMap.end()) {
-        fCurrentHisto=name;
+    if (it != fHistoMap.end()) {
+        fCurrentHisto = name;
         ui->histoWidget->setTitle(name);
         ui->histoWidget->setData(*it);
         ui->histoWidget->setAxisTitle(QwtPlot::xBottom, QString::fromStdString(it->getUnit()));
@@ -81,8 +64,8 @@ void histogramDataForm::on_tableWidget_cellClicked(int row, int /*column*/)
         ui->maxLabel->setText(QString::number(it->getMax()));
         ui->underflowLabel->setText(QString::number(it->getUnderflow()));
         ui->overflowLabel->setText(QString::number(it->getOverflow()));
-        ui->meanLabel->setText(QString::number(it->getMean())+QString::fromStdString(it->getUnit()));
-        ui->rmsLabel->setText(QString::number(it->getRMS(),'g',4)+QString::fromStdString(it->getUnit()));
+        ui->meanLabel->setText(QString::number(it->getMean()) + QString::fromStdString(it->getUnit()));
+        ui->rmsLabel->setText(QString::number(it->getRMS(), 'g', 4) + QString::fromStdString(it->getUnit()));
     }
 }
 
@@ -102,7 +85,7 @@ void histogramDataForm::onUiEnabledStateChange(bool connected)
         ui->rmsLabel->setText("N/A");
         ui->nrHistosLabel->setText(QString::number(0));
         fHistoMap.clear();
-        fCurrentHisto="";
+        fCurrentHisto = "";
     }
     this->setEnabled(connected);
     ui->histoWidget->setEnabled(connected);

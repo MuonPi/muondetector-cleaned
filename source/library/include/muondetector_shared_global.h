@@ -3,7 +3,6 @@
 
 #include <QtCore/qglobal.h>
 
-
 #ifdef MUONDETECTOR_LIBRARY_EXPORT
 #define MUONDETECTORSHARED Q_DECL_EXPORT
 #else

@@ -13,13 +13,12 @@ enum class TCP_MSG_KEY : quint16;
 // at pos 0: length of message (quint16) -> length of QByteArray - length of this number (sizeof(quint16))
 // at pos 1: tcpMsgID (quint16), shows what kind of message it is
 
-class MUONDETECTORSHARED TcpMessage
-{
+class MUONDETECTORSHARED TcpMessage {
 public:
     TcpMessage(quint16 tcpMsgID = 0);
     TcpMessage(TCP_MSG_KEY tcpMsgID);
     TcpMessage(QByteArray& rawdata);
-    TcpMessage(const TcpMessage &tcpMessage);
+    TcpMessage(const TcpMessage& tcpMessage);
     ~TcpMessage();
 
     void setMsgID(quint16 tcpMsgID);
@@ -28,7 +27,8 @@ public:
     quint16 getMsgID() const;
     quint16 getByteCount() const;
 
-    QDataStream *dStream = nullptr;
+    QDataStream* dStream = nullptr;
+
 private:
     QByteArray m_data {};
     quint16 m_msgID {};

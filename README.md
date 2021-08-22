@@ -33,16 +33,21 @@ Depending on the device of you choice, install the GUI for controlling the softw
    - "muondetector-gui_1.1.2-windows-x64.zip" on a 64-bit Windows machine 
 
 ### Installation from source
-When compiling directly from the git repository you need to manually build and install the [paho-mqttpp](https://github.com/eclipse/paho.mqtt.cpp) library.
 
 The steps to building the daemon are as follows:
-1. enter the build directory
-2. run `mkdir library && mkdir daemon && mkdir gui`
-3. run `cd library && cmake ../../source/library && make`
-4. run `cd ../daemon && cmake ../../source/daemon && make package`
-5. (Optional) `cd ../gui && cmake ../../source/gui && make package`
-6. `cd ../packages`
-7. install the debian packages found there with `sudo apt install ./<filename>.deb`
+1. Install all dependencies
+2. Enter the build directory
+3. run `cmake ../source`
+6. run `make package`
+7. enter `output/packages`
+8. install the debian packages found there with `sudo apt install ./<filename>.deb`
+
+#### Options
+Possible options are: 
+
+`MUONDETECTOR_BUILD_GUI` This defaults to `ON`
+
+`MUONDETECTOR_BUILD_DAEMON` This defaults to `ON` on a raspberry pi system and `OFF` otherwise. Note that you can not turn it on on a non-raspberry pi system.
 
 ## TROUBLESHOOTING AND DEPENDENCIES:  
 
@@ -60,7 +65,7 @@ When trying to create a Makefile with qmake (qt version 5.7.1 on raspbian) there
 
 Cheat-Sheet Copy&Paste:
 
-`sudo apt install qt5-default pyqt5-dev qt5-qmake libqt5serialport5-dev libqt5svg5-dev libqwt-qt5-dev libqwt-dev libcrypto++-dev libcrypto++-doc libcrypto++-utils libcrypto++-dev libcrypto++-doc libcrypto++-utils lftp libpaho-mqttpp qtdeclarative5-dev libconfig++-dev`
+`sudo apt install qt5-default pyqt5-dev qt5-qmake libqt5serialport5-dev libqt5svg5-dev libqwt-qt5-dev libqwt-dev libcrypto++-dev libcrypto++-doc libcrypto++-utils libcrypto++-dev libcrypto++-doc libcrypto++-utils lftp libmosquitto-dev qtdeclarative5-dev libconfig++-dev`
 
 ### Troubleshooting
 

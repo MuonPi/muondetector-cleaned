@@ -2,14 +2,14 @@
 Description=muondetector-daemon - Daemon for custom muondetector board
 Requires=pigpiod.service
 BindsTo=pigpiod.service
-After=pigpiod.service sockets.target
+After=pigpiod.service sockets.target network-online.target
 
 [Service]
 Type=simple
 User=muonuser
 ExecStart=/usr/bin/muondetector-daemon -c
 ExecStop=/bin/kill $MAINPID
-Restart=on-abnormal
+Restart=always
 TimeoutSec=2
 
 [Install]

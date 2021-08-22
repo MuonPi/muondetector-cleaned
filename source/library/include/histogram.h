@@ -3,134 +3,59 @@
 
 #include "muondetector_shared_global.h"
 
+#include <QDataStream>
+//#include <cmath>
 #include <map>
 #include <string>
-#include <cmath>
-#include <QDataStream>
 
-
-class Histogram 
-{
+class Histogram {
 public:
-    Histogram()=default;
-    Histogram(const std::string& name, int nrBins, double min, double max)
-    : fName(name), fNrBins(nrBins), fMin(min), fMax(max)
-    { }
-    ~Histogram() { fHistogramMap.clear(); }
-	void clear() { fHistogramMap.clear(); fUnderflow=fOverflow=0.; }
-	void setName(const std::string& name) { fName=name; }
-	void setUnit(const std::string& unit) { fUnit=unit; }
-	void setNrBins(int bins) { fNrBins = bins; clear(); }
-	int getNrBins() const { return fNrBins; }
-	void setMin(double val) { fMin=val; }
-	double getMin() const { return fMin; }
-	void setMax(double val) { fMax=val; }
-	double getMax() const { return fMax; }
-	double getRange() const { return fMax-fMin; }
-	double getCenter() const { return 0.5*getRange()+fMin; }
-	double getBinCenter(int bin) const { return bin2Value(bin); }
-	int getLowestOccupiedBin() const {
-		 if (fHistogramMap.empty()) return -1;
-		 auto it=fHistogramMap.begin();
-		 while (it!=fHistogramMap.end() && it->second<1e-3) ++it;
-		 if (it==fHistogramMap.end()) return -1;
-		 return it->first;
-	}
-	int getHighestOccupiedBin() const {
-		 if (fHistogramMap.empty()) return -1;
-		 auto it=--fHistogramMap.end();
-		 while (it!=fHistogramMap.begin() && it->second<1e-3) --it;
-		 if (it==fHistogramMap.begin()) return 0;
-		 return it->first;
-	}
-	
-	void fill(double x, double mult = 1.) {
-		int bin=value2Bin(x);
-		if (bin<0) {
-			fUnderflow+=mult;
-		} else if (bin>=fNrBins) {
-			fOverflow+=mult;
-		} else fHistogramMap[bin]+=mult;
-	}
-	void setBinContent(int bin, double value) {
-		if (bin>=0 && bin<fNrBins) fHistogramMap[bin]=value;
-	}
-	double getBinContent(int bin) const {
-		if (bin>=0 && bin<fNrBins) {
-			try {
-				auto it=fHistogramMap.find(bin);
-				if (it!=fHistogramMap.end()) return fHistogramMap.at(bin);
-				else return double();
-			} catch (...) {	return double(); }
-		} else return double();
-	}
-	double getMean() {
-		double sum = 0., entries=0.;
-		for (const auto &entry : fHistogramMap) {
-			entries+=entry.second;
-			sum+=bin2Value(entry.first)*entry.second;
-		}
-		if (entries>0.)	return sum/entries;
-		else return 0.;
-	}
-	
-	double getRMS() {
-		double mean=getMean();
-		double sum = 0., entries=0.;
-		for (const auto &entry : fHistogramMap) {
-			entries+=entry.second;
-			double dx=bin2Value(entry.first)-mean;
-			sum+=dx*dx*entry.second;
-		}
-		if (entries>1.)	return sqrt(sum/(entries-1.));
-		else return 0.;
-	}
-	double getUnderflow() const { return fUnderflow; }
-	double getOverflow() const { return fOverflow; }
-	double getEntries() {
-		double sum = fUnderflow+fOverflow;
-		//	foreach (double value, fHistogramMap) sum+=value;
-		// this should also work, but it doesn't compile. reason unclear
-		for (const auto &entry : fHistogramMap) {
-			sum+=entry.second;
-		}
-/*
-		// this should also work, but it doesn't compile. reason unclear
-		sum += std::accumulate(fHistogramMap.begin(), fHistogramMap.end(), 0.,
-                                          [](double previous, const QPair<const int, double>& p)
-                                          { return previous + p.second; });
-*/
-		return sum;
-	}
-	
-	friend QDataStream& operator << (QDataStream& out, const Histogram& h);
-	friend QDataStream& operator >> (QDataStream& in, Histogram& h);
+    Histogram() = default;
+    Histogram(const std::string& name, int nrBins, double min, double max);
+    ~Histogram();
+    void clear();
+    void setName(const std::string& name);
+    void setUnit(const std::string& unit);
+    void setNrBins(int bins);
+    int getNrBins() const;
+    void setMin(double val);
+    double getMin() const;
+    void setMax(double val);
+    double getMax() const;
+    double getRange() const;
+    double getCenter() const;
+    double getBinCenter(int bin) const;
+    int getLowestOccupiedBin() const;
+    int getHighestOccupiedBin() const;
+    void fill(double x, double mult = 1.);
+    void setBinContent(int bin, double value);
+    double getBinContent(int bin) const;
+    double getMean();
+    double getRMS();
+    double getUnderflow() const;
+    double getOverflow() const;
+    double getEntries();
+    void rescale(double center, double width);
+    void rescale(double center);
 
-	const std::string& getName() const { return fName; }
-	const std::string& getUnit() const { return fUnit; }
+    friend QDataStream& operator<<(QDataStream& out, const Histogram& h);
+    friend QDataStream& operator>>(QDataStream& in, Histogram& h);
+
+    const std::string& getName() const { return fName; }
+    const std::string& getUnit() const { return fUnit; }
 
 protected:
-	int value2Bin(double value) const {
-		double range=fMax-fMin;
-		if (range<=0.) return -1;	
-		int bin=(value-fMin)/range*(fNrBins-1)+0.5;
-		return bin;
-	}
-	double bin2Value(int bin) const {
-		double range=fMax-fMin;
-		if (range<=0.) return -1;	
-		double value=range*bin/(fNrBins-1)+fMin;
-		return value;
-	}
-	std::string fName = "defaultHisto";
-	std::string fUnit = "A.U.";
-	int fNrBins=100;
-	double fMin=0.0;
-	double fMax=1.0;
-	double fOverflow=0;
-	double fUnderflow=0;
-	std::map<int, double> fHistogramMap;
-};
+    int value2Bin(double value) const;
+    double bin2Value(int bin) const;
 
+    std::string fName = "defaultHisto";
+    std::string fUnit = "A.U.";
+    int fNrBins = 100;
+    double fMin = 0.0;
+    double fMax = 1.0;
+    double fOverflow = 0;
+    double fUnderflow = 0;
+    std::map<int, double> fHistogramMap;
+};
 
 #endif // HISTOGRAM_H

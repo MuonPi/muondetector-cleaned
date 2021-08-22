@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
+        <file>res/muon.icns</file>
         <file>res/muon.ico</file>
         <file>qml/places/items/MapComponent.qml</file>
         <file>qml/CustomMap.qml</file>

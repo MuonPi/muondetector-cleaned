@@ -1,13 +1,12 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
-#include <QMainWindow>
-#include <tcpconnection.h>
-#include <QStandardItemModel>
 #include <QErrorMessage>
+#include <QMainWindow>
+#include <QStandardItemModel>
 #include <QTime>
 #include <QVector>
-//#include <geodeticpos.h>
 #include <gpio_pin_definitions.h>
+#include <tcpconnection.h>
 
 // for sig handling:
 #include <sys/types.h>
@@ -29,15 +28,14 @@ struct UbxTimeMarkStruct;
 enum class TCP_MSG_KEY : quint16;
 
 namespace Ui {
-    class MainWindow;
+class MainWindow;
 }
 
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = 0);
+    explicit MainWindow(QWidget* parent = 0);
     ~MainWindow();
 
 signals:
@@ -80,7 +78,10 @@ signals:
     void adcModeReceived(quint8 mode);
     void logInfoReceived(const LogInfoStruct& lis);
     void mqttStatusChanged(bool connected);
-	void timeMarkReceived(const UbxTimeMarkStruct&);
+    void timeMarkReceived(const UbxTimeMarkStruct&);
+    void polaritySwitchReceived(bool pol1, bool pol2);
+    void gpioInhibitReceived(bool inhibit);
+    void mqttInhibitReceived(bool inhibit);
 
 public slots:
     void receivedTcpMessage(TcpMessage tcpMessage);
@@ -92,9 +93,10 @@ public slots:
     void onTriggerSelectionChanged(GPIO_PIN signal);
     void onHistogramCleared(QString histogramName);
     void onAdcModeChanged(quint8 mode);
-	void onRateScanStart(uint8_t ch);
-	void gpioInhibit(bool inhibit);
-	void onPolarityChanged(bool pol1, bool pol2);
+    void onRateScanStart(uint8_t ch);
+    void gpioInhibit(bool inhibit);
+    void mqttInhibit(bool inhibit);
+    void onPolarityChanged(bool pol1, bool pol2);
 
 private slots:
     void resetAndHit();
@@ -108,16 +110,13 @@ private slots:
 
     void onIpButtonClicked();
     void connected();
+    void connection_error(int error_code, const QString message);
     void sendInputSwitch(uint8_t id);
-    void on_discr1Edit_editingFinished();
-    void on_discr1Slider_sliderReleased();
-    void on_discr1Slider_valueChanged(int value);
-    void on_discr1Slider_sliderPressed();
-    void on_discr2Slider_sliderReleased();
-    void on_discr2Slider_valueChanged(int value);
-    void on_discr2Slider_sliderPressed();
+
+    void on_discr1Save_clicked();
+    void on_discr2Save_clicked();
+
     void on_biasPowerButton_clicked();
-    void on_discr2Edit_editingFinished();
     void on_biasVoltageSlider_sliderReleased();
     void on_biasVoltageSlider_valueChanged(int value);
     void on_biasVoltageSlider_sliderPressed();
@@ -129,7 +128,7 @@ private slots:
     void on_saveDacButton_clicked();
 
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow* ui;
     void uiSetConnectedState();
     void uiSetDisconnectedState();
     float parseValue(QString text);
@@ -148,21 +147,22 @@ private:
     float biasDacVoltage = 0.;
     bool biasON, uiValuesUpToDate = false;
     quint8 pcaPortMask = 0;
-    QVector<int> sliderValues = QVector<int>({0,0});
+    std::array<double, 2> sliderValues { 0, 0 };
+    bool sliderValuesDirty { true };
     float maxThreshVoltage;
-	QErrorMessage errorM;
-	TcpConnection *tcpConnection = nullptr;
-	QStandardItemModel *addresses;
-	QList<QStandardItem *> *addressColumn;
+    QErrorMessage errorM;
+    TcpConnection* tcpConnection = nullptr;
+    QStandardItemModel* addresses;
+    QList<QStandardItem*>* addressColumn;
     bool saveSettings(QStandardItemModel* model);
     bool loadSettings(QStandardItemModel* model);
-	bool eventFilter(QObject *object, QEvent *event);
-	bool connectedToDemon = false;
-	bool mouseHold = false;
+    bool eventFilter(QObject* object, QEvent* event);
+    bool connectedToDemon = false;
+    bool mouseHold = false;
     bool automaticRatePoll = true;
     QTimer andTimer, xorTimer, ratePollTimer;
-    CalibForm *calib = nullptr;
-    CalibScanDialog *calibscandialog = nullptr;
+    CalibForm* calib = nullptr;
+    CalibScanDialog* calibscandialog = nullptr;
     double biasCalibOffset = 0.;
     double biasCalibSlope = 1.;
     double minBiasVoltage = 0.;

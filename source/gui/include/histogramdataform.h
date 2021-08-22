@@ -1,9 +1,9 @@
 #ifndef HISTOGRAMDATAFORM_H
 #define HISTOGRAMDATAFORM_H
 
-#include <QWidget>
 #include <QMap>
 #include <QString>
+#include <QWidget>
 
 class Histogram;
 
@@ -11,13 +11,13 @@ namespace Ui {
 class histogramDataForm;
 }
 
-class histogramDataForm : public QWidget
-{
+class histogramDataForm : public QWidget {
     Q_OBJECT
 signals:
     void histogramCleared(QString histogramName);
+
 public:
-    explicit histogramDataForm(QWidget *parent = 0);
+    explicit histogramDataForm(QWidget* parent = 0);
     ~histogramDataForm();
 public slots:
     void onHistogramReceived(const Histogram& h);
@@ -29,9 +29,9 @@ private slots:
     void on_tableWidget_cellClicked(int row, int column);
 
 private:
-    Ui::histogramDataForm *ui;
+    Ui::histogramDataForm* ui;
     QMap<QString, Histogram> fHistoMap;
-    QString fCurrentHisto="";
+    QString fCurrentHisto = "";
 };
 
 #endif // HISTOGRAMDATAFORM_H
