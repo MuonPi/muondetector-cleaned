@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <tuple>
 #include <vector>
+#include <memory>
 
 const uint16_t CALIB_HEADER = 0x2019;
 
