@@ -3,6 +3,7 @@
 #include <cctype>
 #include <cmath>
 #include <iostream>
+#include <memory>
 
 #define AS_U32(f) (*(uint32_t*)&(f))
 #define AS_U16(f) (*(uint16_t*)&(f))
