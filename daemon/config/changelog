@@ -1,3 +1,10 @@
+muondetector-daemon (2.1.1) ; urgency=low
+
+  * Bugfixes:
+  - Fixed missing includes to work with newer compiler versions
+  - Changed scripts for compatibility with newer raspbian version bookworm
+ -- MuonPi <developer@muonpi.org>  Sat, 8. June 2024 20:00:00 +0200
+
 muondetector-daemon (2.1.0) ; urgency=low
 
   * Bugfixes:

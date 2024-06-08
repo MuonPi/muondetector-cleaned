@@ -1,4 +1,4 @@
-# muondetector 
+# muondetector
 
 Software for a [Raspberry Pi based muon detector system](https://MuonPi.org) using a u-blox GNSS module for precise timing. For more information visit our web page [www.MuonPi.org](https://MuonPi.org) and our [Mediawiki](https://wiki.muonpi.org/index.php?title=Main_Page).
 
@@ -10,7 +10,7 @@ This is a software solution for operating a Raspberry Pi mini computer and the u
 
 The latest binaries can be found as Debian packages with patch-notes and other release specific information in the "Releases" folder.
 
-## INSTALLATION 
+## INSTALLATION
 
 ### Raspberry Pi setup
 
@@ -22,15 +22,15 @@ The latest binaries can be found as Debian packages with patch-notes and other r
 
 ### Installation from latest stable release (recommended)
 
-Version 1.1.2 is used as an example. Installing .deb Debian packages: `sudo apt install <./filename>` or on debian jessie `sudo gdebi <'filename'>`. An internet connection might be needed for automatically installing additional needed dependencies.
+Version 2.1.1 is used as an example. Installing .deb Debian packages: `sudo apt install <./filename>` or on debian jessie `sudo gdebi <'filename'>`. An internet connection might be needed for automatically installing additional needed dependencies.
 On your Raspberry Pi:
-1. Install "libmuondetector-shared_1.1.2-raspbian.deb" 
-2. Install "muondetector-daemon_1.1.2-raspbian.deb"
+1. Install "libmuondetector-shared_2.1.1-raspbian.deb"
+2. Install "muondetector-daemon_2.1.1-raspbian.deb"
 Depending on the device of you choice, install the GUI for controlling the software via network connection or on the Raspberry Pi itself:
 3. Install either one of the following depending on your system of choice:
-   - "muondetector-gui_1.1.2-raspbian.deb" on a Raspberry Pi
-   - "muondetector-gui_1.1.2-ubuntu_bionic-x64.deb" on a Ubuntu 18.xx machine 
-   - "muondetector-gui_1.1.2-windows-x64.zip" on a 64-bit Windows machine 
+   - "muondetector-gui_2.1.1-raspbian.deb" on a Raspberry Pi
+   - "muondetector-gui_2.1.1-ubuntu_bionic-x64.deb" on a Ubuntu 18.xx machine
+   - "muondetector-gui_2.1.1-windows-x64.zip" on a 64-bit Windows machine
 
 ### Installation from source
 
@@ -43,13 +43,13 @@ The steps to building the daemon are as follows:
 8. install the debian packages found there with `sudo apt install ./<filename>.deb`
 
 #### Options
-Possible options are: 
+Possible options are:
 
 `MUONDETECTOR_BUILD_GUI` This defaults to `ON`
 
 `MUONDETECTOR_BUILD_DAEMON` This defaults to `ON` on a raspberry pi system and `OFF` otherwise. Note that you can not turn it on on a non-raspberry pi system.
 
-## TROUBLESHOOTING AND DEPENDENCIES:  
+## TROUBLESHOOTING AND DEPENDENCIES:
 
 ### Dependencies
 
@@ -65,14 +65,14 @@ When trying to create a Makefile with qmake (qt version 5.7.1 on raspbian) there
 
 Cheat-Sheet Copy&Paste:
 
-`sudo apt install qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools pyqt5-dev qt5-qmake libqt5serialport5-dev libqt5svg5-dev libcrypto++-dev libcrypto++-doc libcrypto++-utils lftp libmosquitto-dev qtdeclarative5-dev libconfig++-dev libpigpiod-if-dev cmake file`
+`sudo apt install qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools pyqt5-dev qt5-qmake libqt5serialport5-dev libqt5svg5-dev libcrypto++-dev libcrypto++-doc libcrypto++-utils lftp libmosquitto-dev qtdeclarative5-dev libconfig++-dev cmake file`
  and either `sudo apt install libqwt-qt5-dev`
-or 
+or
 `sudo apt install libqwt-dev`
 
 ### Troubleshooting
 
-#### Version > 1.1.2
+#### Version > 2.1.1
 
 It may be when starting for the first time that, if the daemon is not started as a service, the data folder structure cannot be written due to insufficient rights. Starting the daemon with sudo-er rights should be avoided. Here, the folder structure can be created by hand to solve the issue: copy paste the hashed folder name from the error output of the daemon when started without folder structure and create the folder with `sudo mkdir /var/muondetector/[Hashed Name]` with `notUploadedData` and `uploadedData` as sub-folders. Then, change the user rights with `sudo chown -R pi:pi /var/muondetector`. When restarted, the daemon should be able to write the data. 
 
@@ -85,17 +85,17 @@ Compillation can then start as usual with `cmake <source_folder>`, `make` and `m
 
 ## RUNNING THE SOFTWARE
 
-### Version < 1.1.2
+### Version < 2.1.1
 On your Raspberry Pi, do:
 1. `sudo pigpiod -s 1` for setting the GPIO sampling rate to 1 MHz
 2. start the daemon with `muondetector_daemon <device> [options]` where device is your serial interface (either "/dev/ttyS0" for Raspberry Pi 3 & 4 or "/dev/ttyAMA0" for Raspberry Pi 2). The options can be reviewed by adding -h. It is recommended to use the -c option on first start (if the configuration is not yet written to eeprom).
-On your network device or on your Raspberry Pi: 
+On your network device or on your Raspberry Pi:
 3. Start the gui with `muondetector_gui` on the device of your choice and measure some tasty muons!
 
-### Version >= 1.1.2
+### Version >= 2.1.1
 
 1. Make sure the daemon is properly installed. You can check the muondetector-daemon status with 'systemctl status muondetector-daemon.service'. It should show something like "loaded inactive" with a grey indication circle. Don't start the daemon yet. If the service is not recognized, the installation probably did not work correctly.
 2. On first start: to log on the MQTT service, run the 'muondetector-login program' while the daemon is still offline. If you don't have a user account on our server yet, please send a mail to <support@muonpi.org>. Inside of /etc/muondetector/muondetector.conf you can set a configuration, for example you can set a unique station id in case you operate more than one station with one user account. Start the daemon with `systemctl start muondetector-daemon.service` (make sure it is also enabled by default using 'systemctl enable muondetector-daemon.service').
-On your network device or on your Raspberry Pi: 
+On your network device or on your Raspberry Pi:
 2. Start the gui with `muondetector-gui` on the device of your choice and measure some tasty muons!
 
