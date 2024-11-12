@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
 mkdir -p /var/muondetector
-useradd muonuser -g users -G dialout,pi,i2c,users -s /usr/sbin/nologin -r -N -M -b /var/muondetector || echo "User already exists"
+useradd muonuser -g users -G dialout,i2c,users -s /usr/sbin/nologin -r -N -M -b /var/muondetector || echo "User already exists"
 chown muonuser:users /var/muondetector
 chmod g+w /var/muondetector
