@@ -65,7 +65,7 @@ When trying to create a Makefile with qmake (qt version 5.7.1 on raspbian) there
 
 Cheat-Sheet Copy&Paste:
 
-`sudo apt install qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools pyqt5-dev qt5-qmake libqt5serialport5-dev libqt5svg5-dev libcrypto++-dev libcrypto++-doc libcrypto++-utils lftp libmosquitto-dev qtdeclarative5-dev libconfig++-dev cmake file`
+`sudo apt install qtbase5-dev libqt5serialport5-dev libqt5svg5-dev libcrypto++-dev libmosquitto-dev qtdeclarative5-dev libconfig++-dev cmake file`
  and either `sudo apt install libqwt-qt5-dev`
 or
 `sudo apt install libqwt-dev`
